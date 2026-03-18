@@ -1,160 +1,77 @@
-# Library Management & Membership System — ERD Overview
+# 📚 Library Management System — Database Design
 
-## 1. Project Overview
+A comprehensive **Entity-Relationship (ER) database design** for a library management and membership system. The design covers the full operational scope of a library: people (members, employees, guests), book catalog management, borrowing workflows, membership tiers, promotions, employee training, and payment processing.
 
-This Entity-Relationship Diagram (ERD) models a comprehensive **library management and membership system**. It captures:
-- People (employees, members, guests)
-- Memberships (gold / silver)
-- Library cards and promotions
-- Books, authors, publishers, and multi-category classification
-- Comments/reviews on books
-- Borrowing workflow including borrowing details and payments
-- Employee roles (e.g., trainer, receptionist, cataloging manager)
-- Training/certification relationships
-- Guest visit logging
+## ✨ Features
 
-The design emphasizes normalization, role specialization, traceability of activity (borrowing, training), and support for flexible membership/promotion rules.
+- **Person specialization hierarchy** — a single `Person` base entity specializes into `Employee` and `Member` subtypes, avoiding attribute redundancy
+- **Tiered membership system** — Gold and Silver membership levels associated with library cards and promotions
+- **Multi-category book classification** — books support multiple categories via a junction table structure (`BookCategory`)
+- **Full borrowing lifecycle** — `Borrowing_Details` tracks issue date, return date, and return policy; linked to `Payment_Details` for fine/fee management
+- **Employee role specialization** — roles include Cataloging Manager, Library Supervisor, and Receptionist with a training/certification subsystem (`Trainer`)
+- **Guest visit logging** — `Guest_Log` tracks non-member visits with optional membership association
+- **Book reviews** — `Comments` entity stores ratings, timestamps, and content linked to books
 
-## 2. Core Entities & Attributes
+## 🛠️ Tech Stack
 
-### Person
-Base entity representing any human in the system. Attributes (examples):
-- `PersonID` (PK)
-- `FullName`, `FirstName`, `MiddleName`, `LastName`
-- `Address`
-- `Gender`
-- `DateOfBirth`
-- `PhoneNumber`
+| Component | Technology |
+|-----------|-----------|
+| Design Tool | ERD (Entity-Relationship Diagram) |
+| Diagrams | ERD Diagram (conceptual) + Physical Diagram |
+| Reference SQL | PostgreSQL-compatible DDL |
 
-### Employee (specialization of Person)
-- `EmployeeID` (PK, FK to Person)
-- `JobTitle`
-- `StartDate`
-- `Employee_Shift`
-- Role specialization: Cataloging Manager, Library Supervisor, Receptionist (disjoint/overlapping as per diagram)
+## 📊 ER Diagrams
 
-### Member (specialization of Person)
-- Members are issued library cards.
-- Related to `LibraryCard` via an `Issued` relationship.
+The repository includes two diagram artifacts:
 
-### LibraryCard
-- `LibraryCardID` (PK)
-- `DateOfIssue`
-- `MembershipLevel` (e.g., Gold, Silver)
-- Relationship to Promotions (a card can be associated with promotions it “provides”)
-- Issued to a Member (1:1 or 1:N depending on policy)
+| File | Description |
+|------|-------------|
+| `ERD_DIAGRAM.jpg` | Conceptual ER diagram showing entities, relationships, and cardinalities |
+| `PHYSICAL_DIAGRAM.jpg` | Physical data model showing table structures and foreign keys |
 
-### GoldMembership / SilverMembership
-Subtype details (if separate entities) indicating different levels, contained in a `Guest_Log` or attached to library cards.
+## 🗄️ Core Entities
 
-### Guest_Log
-Tracks guest visits; contains:
-- `Guest_ID`
-- `Guest_Name`
-- `Guest_Address`
-- `Guest_Phone`
-- `Gold_Member_ID` (if applicable)
-- Relationship indicating containment of membership types.
+| Entity | Key Attributes | Notes |
+|--------|---------------|-------|
+| `Person` | PersonID, FullName, Address, Gender, DateOfBirth, PhoneNumber | Base type |
+| `Employee` | EmployeeID (FK→Person), JobTitle, StartDate, Employee_Shift | ISA specialization |
+| `Member` | MemberID (FK→Person) | ISA specialization |
+| `LibraryCard` | LibraryCardID, DateOfIssue, MembershipLevel | Issued to Member |
+| `Book` | Book_ID, Book_Title, Book_Description, Main_Content | Core catalog entity |
+| `Author` | AuthorID, AuthorName | N:1 with Books |
+| `Publisher` | Pub_ID, Pub_Name, Publisher_Address | N:1 with Books |
+| `Borrowing_Details` | Borrowing_ID, Date_Of_Issue, Return_Date, Return_Policy | Transaction record |
+| `Payment_Details` | Payment_ID, Payment_Type, Payment_Time, Amount | Linked to borrowing |
+| `Promotion` | P_Code, P_Description | M:N with LibraryCard |
+| `Trainer` | Certificate, Certificate_number | Trains Employees |
+| `Guest_Log` | Guest_ID, Guest_Name, Guest_Phone | Tracks guest visits |
+| `Comments` | Comment_ID, Rating, Comment_Time, Main_Content | Reviews on Books |
 
-### Promotion
-- `P_Code` (PK)
-- `P_Description`
-- Provided to cards and/or members.
+## 🔗 Key Relationships & Cardinalities
 
-### Trainer
-- Trainers have certifications (`Trainer_certificate`, `Certificate_number`)
-- Trains employees (likely Receptionists or others), with training events tracked including issue date of certificates.
+| Relationship | Cardinality | Notes |
+|-------------|------------|-------|
+| Person → Employee/Member | 1:0..1 (ISA) | Disjoint or overlapping roles |
+| Member → LibraryCard | 1:1 or 1:N | Card issuance |
+| LibraryCard → Promotion | N:M | Via associative entity |
+| Book → Author | N:1 | One primary author per book |
+| Book → Publisher | N:1 | One publisher per book |
+| Book → BookCategory | 1:N | Multi-category junction |
+| Book → Comments | 1:N | Reviews linked to books |
+| Book → Borrowing_Details | 1:N | Borrow history per book |
+| Borrowing_Details → Payment_Details | 1:1 or 1:N | Fee generation |
+| Trainer → Employee | N:M | Training events with certificates |
 
-### Books
-- `Book_ID` (PK)
-- `Book_Category`, `Book_Title`, `Book_Description`, `Main_Content`
-- Relationships:
-  - Written by Authors (N:1)
-  - Published by Publishers (N:1)
-  - Belongs to multiple categories (e.g., `Cate1`, `Cate2`, `Cate3`) — likely a many-to-many resolved via a category linking structure.
-  - Has Comments (N:N) or Comments are about Books.
-
-### Author
-- `AuthorID` (PK)
-- `AuthorName`
-- Possibly other books attributed (`Author_Other_Books`)
-
-### Publisher
-- `Pub_ID` (PK)
-- `Pub_Name`
-- `Publisher_Address`
-- `Publisher_Other_Books`
-- Maintains catalog(s) of books.
-
-### Comments
-- `Comment_ID` (implied)
-- `Rating`
-- `Comment_Time`
-- `Main_Content`
-- Relationship to Books (About), possibly to Persons (who commented).
-
-### Borrowing_Details
-Tracks the borrowing events:
-- `Borrowing_ID` (PK)
-- `Date_Of_Issue`
-- `Return_Date`
-- `Return_Policy`
-- Relationship “When Borrowed” to books and/or members.
-
-### Payment_Details
-- `Payment_ID` (PK)
-- `Payment_Type`
-- `Payment_Time`
-- `Amount`
-- Tied to borrowing events (fines, membership payments, etc.)
-
-## 3. Relationships & Cardinalities (selected)
-
-- **Person → Employee / Member:** Specialization (ISA). A person may be an employee or a member (or both if allowed).  
-- **Member → LibraryCard:** Issued relationship (1:1 or 1:N).  
-- **LibraryCard → Promotion:** Provides (N:N implied via associative entity).  
-- **Books → Author:** Many books can be written by one author; a book can have multiple authors if extended (currently shown as N:1).  
-- **Books → Publisher:** Many books published by one publisher (N:1).  
-- **Books → Comments:** One book can have many comments; comments are about books (N:N or 1:N depending on implementation).  
-- **Books → Borrowing_Details:** When borrowed relationship; a book can appear in many borrowing records.  
-- **Borrowing_Details → Payment_Details:** One-to-one or one-to-many (a borrowing may generate payments).  
-- **Trainer → Employee:** Trainer trains employees; training events issue certificates.  
-- **Guest_Log → Gold/Silver Membership:** A guest log “contains” membership type (1:1 containment).  
-
-## 4. Assumptions
-
-- Employee roles (Cataloging Manager, Supervisor, Receptionist) may be disjoint or overlapping—diagram hints at a specialization hierarchy.  
-- Promotions can be applied to cards or members and are reusable (hence many-to-many).  
-- Categories for books are multi-valued (multiple category attributes) and likely implemented via a join table in a normalized schema.  
-- Borrowing details are timestamped and trigger payment obligations (late fee, etc.).
-- Comments include a rating and timestamp, allowing reviews to be audited.
-
-## 5. Normalization Notes
-
-- The design separates concerns: People, Roles, Content (Books), and Transactions (Borrowing, Payments).  
-- Multi-valued attributes (like book categories) should be implemented with linking/junction tables (e.g., `BookCategories(book_id, category_id, description)`).  
-- Specialization (Person → Employee/Member) avoids redundancy of shared personal info.  
-- Promotions, training, and memberships are modular to support easy extension.
-
-## 6. Example Logical Schema Snippets (SQL-style)
+## 🏗️ Sample DDL (PostgreSQL)
 
 ```sql
 CREATE TABLE Person (
   PersonID SERIAL PRIMARY KEY,
   FullName VARCHAR(255),
-  MiddleName VARCHAR(100),
-  LastName VARCHAR(100),
   Address TEXT,
   Gender VARCHAR(10),
   DateOfBirth DATE,
   PhoneNumber VARCHAR(20)
-);
-
-CREATE TABLE Employee (
-  EmployeeID INT PRIMARY KEY REFERENCES Person(PersonID),
-  JobTitle VARCHAR(100),
-  StartDate DATE,
-  Employee_Shift VARCHAR(50)
 );
 
 CREATE TABLE Member (
@@ -165,36 +82,44 @@ CREATE TABLE LibraryCard (
   LibraryCardID SERIAL PRIMARY KEY,
   MemberID INT REFERENCES Member(MemberID),
   DateOfIssue DATE,
-  MembershipLevel VARCHAR(50)
-);
-
-CREATE TABLE Promotion (
-  P_Code VARCHAR(50) PRIMARY KEY,
-  P_Description TEXT
+  MembershipLevel VARCHAR(50) CHECK (MembershipLevel IN ('Gold', 'Silver'))
 );
 
 CREATE TABLE Book (
   Book_ID SERIAL PRIMARY KEY,
-  Book_Title TEXT,
+  Book_Title TEXT NOT NULL,
   Book_Description TEXT,
   Main_Content TEXT
 );
 
-CREATE TABLE Author (
-  AuthorID SERIAL PRIMARY KEY,
-  AuthorName VARCHAR(255)
-);
-
-CREATE TABLE Publisher (
-  Pub_ID SERIAL PRIMARY KEY,
-  Pub_Name VARCHAR(255),
-  Publisher_Address TEXT
-);
-
--- Junction example for multi-category
 CREATE TABLE BookCategory (
   BookID INT REFERENCES Book(Book_ID),
   CategoryName VARCHAR(100),
   Description TEXT,
   PRIMARY KEY (BookID, CategoryName)
 );
+
+CREATE TABLE Borrowing_Details (
+  Borrowing_ID SERIAL PRIMARY KEY,
+  Book_ID INT REFERENCES Book(Book_ID),
+  MemberID INT REFERENCES Member(MemberID),
+  Date_Of_Issue DATE,
+  Return_Date DATE,
+  Return_Policy TEXT
+);
+
+CREATE TABLE Payment_Details (
+  Payment_ID SERIAL PRIMARY KEY,
+  Borrowing_ID INT REFERENCES Borrowing_Details(Borrowing_ID),
+  Payment_Type VARCHAR(50),
+  Payment_Time TIMESTAMP,
+  Amount DECIMAL(10, 2)
+);
+```
+
+## 📐 Normalization Notes
+
+- **3NF/BCNF compliant** — all non-key attributes depend only on the primary key
+- Multi-valued book categories resolved via `BookCategory` junction table
+- Shared personal attributes factored into `Person` to avoid duplication across `Employee` and `Member`
+- Promotions and training are modular — adding new promotion types or certification types requires no schema changes
